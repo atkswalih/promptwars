@@ -328,12 +328,35 @@ img     { display: block; max-width: 100%; }
   resize: none;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
+  resize: vertical;
+  min-height: 80px;
 }
 .main-textarea:focus {
   border-color: var(--border-bright);
   box-shadow: 0 0 0 3px rgba(36, 55, 89, 0.5);
 }
-.main-textarea::placeholder { color: var(--text-dim); }
+.main-textarea::placeholder { color: var(--text-dim); opacity: 0.9; }
+
+.textarea-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: -6px;
+  margin-bottom: 4px;
+}
+.char-counter {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.char-counter.near-limit {
+  color: var(--warning);
+}
+.char-counter.at-limit {
+  color: var(--sos);
+  font-weight: 700;
+}
 
 /* === UPLOAD AREA === */
 .upload-area { display: flex; flex-direction: column; gap: 8px; }

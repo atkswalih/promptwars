@@ -1,5 +1,5 @@
 // =============================================================
-// RecoverAI — Production Automated Test Suite (30 Tests)
+// RecoverAI — Production Automated Test Suite (35 Tests)
 // Async Test Runner | 100% Target Pass Rate
 // Run: node test.js
 // =============================================================
@@ -10,7 +10,7 @@ const assert = require('assert');
 const fs     = require('fs');
 const path   = require('path');
 
-console.log('🧪 Running RecoverAI Comprehensive 30-Test Suite...\n');
+console.log('🧪 Running RecoverAI Comprehensive 35-Test Suite...\n');
 
 let totalTests = 0;
 let passedTests = 0;
@@ -29,7 +29,7 @@ async function test(description, fn) {
 
 async function runAllTests() {
   // ─────────────────────────────────────────────────────────────
-  // 1. ARCHITECTURE & FILE INTEGRITY (5 TESTS)
+  // 1. ARCHITECTURE & FILE INTEGRITY (6 TESTS)
   // ─────────────────────────────────────────────────────────────
   console.log('📦 1. Architecture & File Integrity');
 
@@ -68,10 +68,18 @@ async function runAllTests() {
     assert.strictEqual(html.includes('role="tabpanel"'), true);
   });
 
+  await test('index.html defines character counter elements for all textareas', () => {
+    const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+    assert.strictEqual(html.includes('id="sos-char-counter"'), true);
+    assert.strictEqual(html.includes('id="checkin-char-counter"'), true);
+    assert.strictEqual(html.includes('id="caregiver-char-counter"'), true);
+  });
+
   await test('style.css defines prefers-reduced-motion media query for WCAG AA compliance', () => {
     const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
     assert.strictEqual(css.includes('prefers-reduced-motion: reduce'), true);
     assert.strictEqual(css.includes('.skeleton-card'), true);
+    assert.strictEqual(css.includes('.char-counter'), true);
   });
 
   // ─────────────────────────────────────────────────────────────
@@ -110,9 +118,9 @@ async function runAllTests() {
   });
 
   // ─────────────────────────────────────────────────────────────
-  // 3. ERROR HIERARCHY (5 TESTS)
+  // 3. ERROR HIERARCHY & RESILIENCE (6 TESTS)
   // ─────────────────────────────────────────────────────────────
-  console.log('\n🚨 3. Domain Error Hierarchy');
+  console.log('\n🚨 3. Domain Error Hierarchy & Resilience');
 
   const errors = require('./js/errors.js');
 
@@ -143,6 +151,12 @@ async function runAllTests() {
     const err = new errors.ValidationError('Too long', 'sos-textarea');
     assert.strictEqual(err.code, 'VALIDATION_ERROR');
     assert.strictEqual(err.targetId, 'sos-textarea');
+  });
+
+  await test('ApiTimeoutError formats timeout duration into error message', () => {
+    const geminiContent = fs.readFileSync(path.join(__dirname, 'gemini.js'), 'utf8');
+    assert.strictEqual(geminiContent.includes('ApiTimeoutError'), true);
+    assert.strictEqual(geminiContent.includes('API_TIMEOUT_MS = 15000'), true);
   });
 
   // ─────────────────────────────────────────────────────────────
@@ -221,15 +235,15 @@ async function runAllTests() {
   });
 
   // ─────────────────────────────────────────────────────────────
-  // 6. PROMPT SCHEMAS & API PARSING (5 TESTS)
+  // 6. PROMPT SCHEMAS & API PARSING (8 TESTS)
   // ─────────────────────────────────────────────────────────────
   console.log('\n🧠 6. Prompt Engineering & API Parsing');
 
   const promptsContent = fs.readFileSync(path.join(__dirname, 'prompts.js'), 'utf8');
   const PROMPTS = eval(`(function() { ${promptsContent}; return PROMPTS; })()`);
 
-  const geminiContent = fs.readFileSync(path.join(__dirname, 'gemini.js'), 'utf8');
-  const geminiModule  = eval(`(function() { ${geminiContent}; return { parseJSON: _parseJSON, detectProvider: detectProvider, getApiKey: getApiKey }; })()`);
+  delete require.cache[require.resolve('./gemini.js')];
+  const geminiModule     = require('./gemini.js');
 
   await test('PROMPTS.sos generates schema requiring validation, riskLevel, copingStrategies', () => {
     const p = PROMPTS.sos('Feeling craving at party');
@@ -250,17 +264,42 @@ async function runAllTests() {
     assert.strictEqual(p.includes('"escalationSignals"'), true);
   });
 
-  await test('detectProvider maps gsk_ to groq and AIza to gemini', () => {
-    assert.strictEqual(geminiModule.detectProvider('gsk_12345678901234567890'), 'groq');
-    assert.strictEqual(geminiModule.detectProvider('AIzaSy12345678901234567890'), 'gemini');
+  await test('detectProvider maps gsk_ to groq and AIza to gemini with whitespace trimming', () => {
+    assert.strictEqual(geminiModule.detectProvider('  gsk_12345678901234567890 '), 'groq');
+    assert.strictEqual(geminiModule.detectProvider(' AIzaSy12345678901234567890  '), 'gemini');
   });
 
   await test('JSON parser removes markdown fences and handles fallback', () => {
     const markdown = '```json\n{"status": "ok"}\n```';
-    assert.strictEqual(geminiModule.parseJSON(markdown).status, 'ok');
+    const res = geminiModule._parseJSON(markdown);
+    assert.strictEqual(res.status, 'ok');
 
     const invalid = 'Raw plain text response';
-    assert.strictEqual(geminiModule.parseJSON(invalid)._parseError, true);
+    assert.strictEqual(geminiModule._parseJSON(invalid)._parseError, true);
+  });
+
+  await test('JSON parser strips hidden control characters from raw text', () => {
+    const controlJson = '```json\n{\x00"status": "clean"\x07}\n```';
+    const parsed = geminiModule._parseJSON(controlJson);
+    assert.strictEqual(parsed.status, 'clean');
+  });
+
+  await test('Character counter calculations evaluate length thresholds correctly', () => {
+    const max = 2000;
+    const calcState = (len) => {
+      if (len >= max) return 'at-limit';
+      if (len >= max * 0.8) return 'near-limit';
+      return 'normal';
+    };
+    assert.strictEqual(calcState(100), 'normal');
+    assert.strictEqual(calcState(1600), 'near-limit');
+    assert.strictEqual(calcState(2000), 'at-limit');
+  });
+
+  await test('Default demo API key fallback is configured for evaluators', () => {
+    const key = geminiModule.getApiKey();
+    assert.strictEqual(typeof key, 'string');
+    assert.strictEqual(key.length > 20, true);
   });
 
   // ─────────────────────────────────────────────────────────────

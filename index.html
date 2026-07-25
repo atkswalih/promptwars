@@ -88,8 +88,11 @@
           class="main-textarea"
           placeholder="Describe how you're feeling, what's triggering you, where you are… This is a safe, private space."
           rows="4"
-          aria-describedby="sos-hint"
+          aria-describedby="sos-char-counter"
         ></textarea>
+        <div class="textarea-footer">
+          <span id="sos-char-counter" class="char-counter" aria-live="polite">0 / 2000</span>
+        </div>
 
 
 
@@ -168,7 +171,11 @@
           placeholder="What's on your mind? Any wins, challenges, or worries today? (optional)"
           rows="3"
           aria-label="Additional context about your day"
+          aria-describedby="checkin-char-counter"
         ></textarea>
+        <div class="textarea-footer">
+          <span id="checkin-char-counter" class="char-counter" aria-live="polite">0 / 2000</span>
+        </div>
 
         <button id="checkin-submit" class="submit-btn checkin-submit">
           <span class="btn-text">Get My Daily Plan</span>
@@ -207,11 +214,14 @@
           class="main-textarea"
           placeholder="Tell us about the situation — what happened, how they're behaving, what you're worried about, what you've already tried…"
           rows="5"
-          aria-describedby="caregiver-hint"
+          aria-describedby="caregiver-char-counter"
         ></textarea>
-        <p id="caregiver-hint" style="font-size:0.75rem;color:var(--text-dim);margin-top:-6px;">
-          The more detail you share, the more specific and helpful the guidance will be.
-        </p>
+        <div class="textarea-footer" style="display:flex;justify-content:space-between;align-items:center;">
+          <p id="caregiver-hint" style="font-size:0.75rem;color:var(--text-dim);margin:0;">
+            The more detail you share, the more specific and helpful the guidance will be.
+          </p>
+          <span id="caregiver-char-counter" class="char-counter" aria-live="polite">0 / 2000</span>
+        </div>
 
         <button id="caregiver-submit" class="submit-btn caregiver-submit">
           <span class="btn-text">Get Guidance</span>

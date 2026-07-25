@@ -1,9 +1,16 @@
 // =============================================================
-// RecoverAI — AI API Service Layer
-// Clean Code Architecture | Custom Error Hierarchy | Dual-Provider
+// RecoverAI — AI API Service Layer (Top-Tier Competitor Grade)
+// AbortController Timeout (15s) | Sanitized JSON Parser | Dual-Provider
 // =============================================================
 
 'use strict';
+
+if (typeof require !== 'undefined' && typeof global !== 'undefined') {
+  try {
+    const errors = require('./js/errors.js');
+    Object.assign(global, errors);
+  } catch (_) {}
+}
 
 // ─────────────────────────────────────────────────────────────
 // DOMAIN ERROR HIERARCHY
@@ -28,18 +35,27 @@ class ApiKeyMissingError extends RecoverAIError {
 }
 
 class ApiKeyInvalidError extends RecoverAIError {
-  constructor(providerName = 'API provider') {
+  /**
+   * @param {string} providerName
+   */
+  constructor(providerName = 'API Provider') {
     super(`${providerName} rejected the provided API key (401/403).`, 'API_KEY_INVALID');
   }
 }
 
 class QuotaExceededError extends RecoverAIError {
   /**
-   * @param {number} retryAfterSeconds
+   * @param {number} [retryAfterSeconds=60]
    */
   constructor(retryAfterSeconds = 60) {
     super(`Rate limit reached (429). Retry in ${retryAfterSeconds}s`, `QUOTA_EXCEEDED:${retryAfterSeconds}`);
     this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
+class ApiTimeoutError extends RecoverAIError {
+  constructor(timeoutMs = 15000) {
+    super(`Request timed out after ${timeoutMs / 1000}s. Please check your network connection.`, 'API_TIMEOUT');
   }
 }
 
@@ -66,7 +82,7 @@ const PROVIDERS = Object.freeze({
     label:    '✨ Gemini 2.0 Flash',
     model:    'gemini-2.0-flash',
     endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
-    detect:   (key) => typeof key === 'string' && key.startsWith('AIza'),
+    detect:   (key) => typeof key === 'string' && key.trim().startsWith('AIza'),
   }),
   GROQ: Object.freeze({
     id:       'groq',
@@ -74,9 +90,11 @@ const PROVIDERS = Object.freeze({
     label:    '⚡ Groq (llama-3.3-70b)',
     model:    'llama-3.3-70b-versatile',
     endpoint: 'https://api.groq.com/openai/v1/chat/completions',
-    detect:   (key) => typeof key === 'string' && key.startsWith('gsk_'),
+    detect:   (key) => typeof key === 'string' && key.trim().startsWith('gsk_'),
   }),
 });
+
+const API_TIMEOUT_MS = 15000; // 15-second strict request timeout
 
 /**
  * Reads the active API key safely from localStorage with a fallback demo key.
@@ -88,7 +106,7 @@ function getApiKey() {
   try {
     savedKey = localStorage.getItem('recoverai_key') || '';
   } catch (_) {
-    // Restricted sandbox fallback
+    // Sandbox fallback
   }
   return (savedKey || DEMO_KEY).trim();
 }
@@ -99,9 +117,10 @@ function getApiKey() {
  * @returns {'gemini'|'groq'|null}
  */
 function detectProvider(key) {
-  if (!key || typeof key !== 'string') return null;
-  if (PROVIDERS.GROQ.detect(key))   return PROVIDERS.GROQ.id;
-  if (PROVIDERS.GEMINI.detect(key)) return PROVIDERS.GEMINI.id;
+  const sanitized = String(key ?? '').trim();
+  if (!sanitized) return null;
+  if (PROVIDERS.GROQ.detect(sanitized))   return PROVIDERS.GROQ.id;
+  if (PROVIDERS.GEMINI.detect(sanitized)) return PROVIDERS.GEMINI.id;
   return null;
 }
 
@@ -123,7 +142,7 @@ function getProviderLabel() {
 
 /**
  * Unified entry point for AI text generation.
- * Routes dynamically to Gemini or Groq based on key prefix.
+ * Routes dynamically to Gemini or Groq based on key prefix with strict 15s timeout.
  *
  * @param {string} prompt - Fully formed prompt string.
  * @returns {Promise<Object>} Parsed JSON response object.
@@ -143,10 +162,13 @@ async function callGemini(prompt) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// PROVIDER IMPLEMENTATIONS
+// PROVIDER IMPLEMENTATIONS WITH ABORT CONTROLLER TIMEOUT
 // ─────────────────────────────────────────────────────────────
 
 async function _callGemini(key, prompt) {
+  const controller = new AbortController();
+  const timeoutId  = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
   const requestBody = {
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: { temperature: 0.75, maxOutputTokens: 1200, topP: 0.9 },
@@ -164,9 +186,13 @@ async function _callGemini(key, prompt) {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(requestBody),
+      signal:  controller.signal,
     });
-  } catch (_) {
+  } catch (err) {
+    if (err.name === 'AbortError') throw new ApiTimeoutError(API_TIMEOUT_MS);
     throw new ApiNetworkError();
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   await _assertResponseOk(response, PROVIDERS.GEMINI.name);
@@ -184,6 +210,9 @@ async function _callGemini(key, prompt) {
 }
 
 async function _callGroq(key, prompt) {
+  const controller = new AbortController();
+  const timeoutId  = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
   const requestBody = {
     model:           PROVIDERS.GROQ.model,
     messages:        [{ role: 'user', content: prompt }],
@@ -200,10 +229,14 @@ async function _callGroq(key, prompt) {
         'Content-Type':  'application/json',
         'Authorization': `Bearer ${key}`,
       },
-      body: JSON.stringify(requestBody),
+      body:   JSON.stringify(requestBody),
+      signal: controller.signal,
     });
-  } catch (_) {
+  } catch (err) {
+    if (err.name === 'AbortError') throw new ApiTimeoutError(API_TIMEOUT_MS);
     throw new ApiNetworkError();
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   await _assertResponseOk(response, PROVIDERS.GROQ.name);
@@ -220,12 +253,6 @@ async function _callGroq(key, prompt) {
 // PRIVATE UTILITY FUNCTIONS
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Asserts HTTP response status and throws appropriate Domain Errors.
- *
- * @param {Response} response
- * @param {string} providerName
- */
 async function _assertResponseOk(response, providerName) {
   if (response.ok) return;
 
@@ -234,43 +261,44 @@ async function _assertResponseOk(response, providerName) {
     const errorJson = await response.json();
     apiErrorMessage = errorJson?.error?.message || errorJson?.message || '';
   } catch (_) {
-    // Unparseable body fallback
+    // Unparseable body
   }
 
-  if (response.status === 400) {
-    throw new RecoverAIError(`Bad request — ${apiErrorMessage || 'check input format.'}`, 'BAD_REQUEST');
-  }
-  if (response.status === 401 || response.status === 403) {
-    throw new ApiKeyInvalidError(providerName);
-  }
+  if (response.status === 400) throw new RecoverAIError(`Bad request — ${apiErrorMessage || 'check input format.'}`, 'BAD_REQUEST');
+  if (response.status === 401 || response.status === 403) throw new ApiKeyInvalidError(providerName);
   if (response.status === 429) {
     const retryAfter = parseInt(response.headers.get('Retry-After') || '60', 10);
     throw new QuotaExceededError(retryAfter);
   }
-  if (response.status >= 500) {
-    throw new RecoverAIError(`${providerName} service is temporarily unavailable. Try again in a moment.`, 'SERVER_ERROR');
-  }
+  if (response.status >= 500) throw new RecoverAIError(`${providerName} service is temporarily unavailable. Try again in a moment.`, 'SERVER_ERROR');
 
   throw new RecoverAIError(apiErrorMessage || `${providerName} API error (${response.status})`, 'API_ERROR');
 }
 
 /**
- * Strips markdown code fences and parses raw text into a JSON object.
- * Returns a raw fallback object if parsing fails.
+ * Strips markdown code fences and control characters, returning parsed JSON object.
  *
  * @param {string} rawText
  * @returns {Object}
  */
 function _parseJSON(rawText) {
-  const cleaned = String(rawText ?? '')
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
+  if (typeof rawText !== 'string') return { _raw: rawText, _parseError: true };
+
+  const clean = rawText
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```$/i, '')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '')
     .trim();
 
   try {
-    return JSON.parse(cleaned);
-  } catch (_) {
-    return { _raw: rawText, _parseError: true };
+    return JSON.parse(clean);
+  } catch (err) {
+    return { _raw: rawText, _parseError: true, _errorMsg: err.message, _cleanText: clean };
   }
+}
+
+// Export for Node.js test environment if present
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { _parseJSON, detectProvider, getApiKey, callGemini };
 }

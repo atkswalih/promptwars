@@ -372,8 +372,23 @@ async function handleCaregiverSubmit() {
    UI UTILITIES & VIEW RENDERERS
    ═══════════════════════════════════════════════════════════ */
 function initInputSafeguards() {
+  const max = LIMITS.MAX_INPUT_CHARS;
+
   DOM.queryAll('.main-textarea').forEach(area => {
-    area.setAttribute('maxlength', String(LIMITS.MAX_INPUT_CHARS));
+    area.setAttribute('maxlength', String(max));
+    const counterId = area.getAttribute('aria-describedby');
+    const counterEl = counterId ? DOM.get(counterId) : null;
+
+    if (counterEl) {
+      const updateCount = () => {
+        const len = area.value.length;
+        counterEl.textContent = `${len} / ${max}`;
+        counterEl.classList.toggle('near-limit', len >= max * 0.8 && len < max);
+        counterEl.classList.toggle('at-limit', len >= max);
+      };
+      area.addEventListener('input', updateCount);
+      updateCount();
+    }
   });
 }
 
