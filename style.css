@@ -28,10 +28,10 @@
   --checkin:       #22d3ee;
   --checkin-dark:  #06b6d4;
 
-  /* Text */
+  /* Text (WCAG AA Compliant contrast on #080d18) */
   --text:          #f1f5f9;
-  --text-muted:    #94a3b8;
-  --text-dim:      #4e6080;
+  --text-muted:    #a0aec0;
+  --text-dim:      #8fa3c7;
 
   /* Layout */
   --header-h:   64px;
@@ -939,4 +939,50 @@ img     { display: block; max-width: 100%; }
 
 @media (min-width: 481px) {
   .app-main { padding-top: 4px; }
+}
+
+/* Screen Reader Only Utility (WCAG AA) */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Skeleton Loading Card State (Optimistic UX) */
+.skeleton-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 20px;
+  margin-bottom: 16px;
+  animation: skeleton-shimmer 1.5s infinite ease-in-out;
+}
+.skeleton-line {
+  height: 14px;
+  background: var(--border-bright);
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+.skeleton-line.short { width: 40%; }
+.skeleton-line.medium { width: 70%; }
+
+@keyframes skeleton-shimmer {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.8; }
+}
+
+/* Reduced Motion Override (WCAG AA) */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
