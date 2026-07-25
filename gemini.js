@@ -30,7 +30,7 @@ const PROVIDERS = {
 function getApiKey() {
   // localStorage key takes priority (set via ⚙️ Settings modal)
   // DEMO_KEY is the fallback for judges — rotate this key after judging
-  const DEMO_KEY = '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';
+  const DEMO_KEY = 'YOUR_GROQ_KEY_HERE';   // 🔑 paste your gsk_... key here
   return (localStorage.getItem('recoverai_key') || DEMO_KEY).trim();
 }
 
