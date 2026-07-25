@@ -1,107 +1,154 @@
 // =============================================================
-// RecoverAI — AI API Service
-// Supports two providers, auto-detected from the API key prefix:
-//   · Gemini (AIzaSy…) — Google, multimodal (text + vision)
-//   · Groq   (gsk_…)   — Groq Cloud, text-only, higher free limits
-//
-// Architecture: Browser → Provider REST API directly.
-// ⚠️  API key is NEVER hardcoded — configured via ⚙️ Settings modal.
+// RecoverAI — AI API Service Layer
+// Clean Code Architecture | Custom Error Hierarchy | Dual-Provider
 // =============================================================
 
-/* ── Provider config ─────────────────────────────────────── */
-const PROVIDERS = {
-  gemini: {
-    model   : 'gemini-2.0-flash',
+'use strict';
+
+// ─────────────────────────────────────────────────────────────
+// DOMAIN ERROR HIERARCHY
+// ─────────────────────────────────────────────────────────────
+
+class RecoverAIError extends Error {
+  /**
+   * @param {string} message
+   * @param {string} code
+   */
+  constructor(message, code = 'RECOVER_AI_ERROR') {
+    super(message);
+    this.name = this.constructor.name;
+    this.code = code;
+  }
+}
+
+class ApiKeyMissingError extends RecoverAIError {
+  constructor() {
+    super('API key is missing or incomplete.', 'API_KEY_MISSING');
+  }
+}
+
+class ApiKeyInvalidError extends RecoverAIError {
+  constructor(providerName = 'API provider') {
+    super(`${providerName} rejected the provided API key (401/403).`, 'API_KEY_INVALID');
+  }
+}
+
+class QuotaExceededError extends RecoverAIError {
+  /**
+   * @param {number} retryAfterSeconds
+   */
+  constructor(retryAfterSeconds = 60) {
+    super(`Rate limit reached (429). Retry in ${retryAfterSeconds}s`, `QUOTA_EXCEEDED:${retryAfterSeconds}`);
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
+class ApiNetworkError extends RecoverAIError {
+  constructor(message = 'Network error — please check your internet connection.') {
+    super(message, 'NETWORK_ERROR');
+  }
+}
+
+class SafetyBlockError extends RecoverAIError {
+  constructor() {
+    super('Response blocked by safety filter. Please rephrase your input.', 'SAFETY_BLOCK');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// PROVIDER CONFIGURATION REGISTRY (IMMUTABLE)
+// ─────────────────────────────────────────────────────────────
+
+const PROVIDERS = Object.freeze({
+  GEMINI: Object.freeze({
+    id:       'gemini',
+    name:     'Google Gemini',
+    label:    '✨ Gemini 2.0 Flash',
+    model:    'gemini-2.0-flash',
     endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
-    detect  : (key) => key.startsWith('AIza'),
-  },
-  groq: {
-    model   : 'llama-3.3-70b-versatile',   // Best free Groq model — 30 RPM free
+    detect:   (key) => typeof key === 'string' && key.startsWith('AIza'),
+  }),
+  GROQ: Object.freeze({
+    id:       'groq',
+    name:     'Groq Cloud',
+    label:    '⚡ Groq (llama-3.3-70b)',
+    model:    'llama-3.3-70b-versatile',
     endpoint: 'https://api.groq.com/openai/v1/chat/completions',
-    detect  : (key) => key.startsWith('gsk_'),
-  },
-};
+    detect:   (key) => typeof key === 'string' && key.startsWith('gsk_'),
+  }),
+});
 
 /**
- * Reads the API key exclusively from localStorage.
- * Key is never hardcoded — user must set it via the ⚙️ Settings modal.
- * @returns {string} trimmed key or empty string
+ * Reads the active API key safely from localStorage with a fallback demo key.
+ * @returns {string} Trimmed API key.
  */
 function getApiKey() {
   const DEMO_KEY = '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';
-  let saved = '';
+  let savedKey = '';
   try {
-    saved = localStorage.getItem('recoverai_key') || '';
-  } catch (_) {}
-  return (saved || DEMO_KEY).trim();
+    savedKey = localStorage.getItem('recoverai_key') || '';
+  } catch (_) {
+    // Restricted sandbox fallback
+  }
+  return (savedKey || DEMO_KEY).trim();
 }
 
-
 /**
- * Detects the active provider ('gemini' | 'groq' | null) from the key prefix.
+ * Detects the active provider ('gemini' | 'groq' | null) from the API key prefix.
  * @param {string} key
  * @returns {'gemini'|'groq'|null}
  */
 function detectProvider(key) {
-  for (const [name, cfg] of Object.entries(PROVIDERS)) {
-    if (cfg.detect(key)) return name;
-  }
+  if (!key || typeof key !== 'string') return null;
+  if (PROVIDERS.GROQ.detect(key))   return PROVIDERS.GROQ.id;
+  if (PROVIDERS.GEMINI.detect(key)) return PROVIDERS.GEMINI.id;
   return null;
 }
 
 /**
- * Returns the detected provider name for display in the UI.
- * Called by app.js to label the active provider in the settings modal.
+ * Returns the human-readable label of the currently active provider.
+ * @returns {string|null}
  */
 function getProviderLabel() {
   const key = getApiKey();
-  const p   = detectProvider(key);
-  if (p === 'groq')   return '⚡ Groq (llama-3.3-70b)';
-  if (p === 'gemini') return '✨ Gemini 2.0 Flash';
+  const providerId = detectProvider(key);
+  if (providerId === PROVIDERS.GROQ.id)   return PROVIDERS.GROQ.label;
+  if (providerId === PROVIDERS.GEMINI.id) return PROVIDERS.GEMINI.label;
   return null;
 }
 
 // ─────────────────────────────────────────────────────────────
-// PUBLIC API — called by app.js
+// PUBLIC API FACADE
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Unified entry point. Routes to Gemini or Groq based on key prefix.
+ * Unified entry point for AI text generation.
+ * Routes dynamically to Gemini or Groq based on key prefix.
  *
- * @param {string}      prompt       - Full prompt string
- * @param {string|null} imageBase64  - Base64 image (no data URL prefix); Gemini only
- * @param {string}      mimeType     - Image MIME type
- * @returns {Promise<Object>}        - Parsed JSON from the AI
+ * @param {string} prompt - Fully formed prompt string.
+ * @returns {Promise<Object>} Parsed JSON response object.
  */
-async function callGemini(prompt, imageBase64 = null, mimeType = 'image/jpeg') {
-  const key      = getApiKey();
-  const provider = detectProvider(key);
+async function callGemini(prompt) {
+  const key        = getApiKey();
+  const providerId = detectProvider(key);
 
-  if (!key || key.length < 20) throw new Error('API_KEY_MISSING');
-  if (!provider)               throw new Error('API_KEY_UNKNOWN_FORMAT');
+  if (!key || key.length < 20) throw new ApiKeyMissingError();
+  if (!providerId)             throw new RecoverAIError('Unrecognized API key format.', 'API_KEY_UNKNOWN_FORMAT');
 
-  if (provider === 'groq') {
-    if (imageBase64) {
-      console.warn('[RecoverAI] Groq does not support image input — sending text only.');
-    }
+  if (providerId === PROVIDERS.GROQ.id) {
     return _callGroq(key, prompt);
   }
 
-  return _callGemini(key, prompt, imageBase64, mimeType);
+  return _callGemini(key, prompt);
 }
 
 // ─────────────────────────────────────────────────────────────
-// GEMINI IMPLEMENTATION
+// PROVIDER IMPLEMENTATIONS
 // ─────────────────────────────────────────────────────────────
-async function _callGemini(key, prompt, imageBase64, mimeType) {
-  const parts = [{ text: prompt }];
 
-  if (imageBase64) {
-    parts.push({ inline_data: { mime_type: mimeType, data: imageBase64 } });
-  }
-
-  const body = {
-    contents: [{ parts }],
+async function _callGemini(key, prompt) {
+  const requestBody = {
+    contents: [{ parts: [{ text: prompt }] }],
     generationConfig: { temperature: 0.75, maxOutputTokens: 1200, topP: 0.9 },
     safetySettings: [
       { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
@@ -113,98 +160,109 @@ async function _callGemini(key, prompt, imageBase64, mimeType) {
 
   let response;
   try {
-    response = await fetch(`${PROVIDERS.gemini.endpoint}?key=${key}`, {
-      method : 'POST',
+    response = await fetch(`${PROVIDERS.GEMINI.endpoint}?key=${key}`, {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body   : JSON.stringify(body),
+      body:    JSON.stringify(requestBody),
     });
   } catch (_) {
-    throw new Error('Network error — please check your internet connection.');
+    throw new ApiNetworkError();
   }
 
-  _assertOk(response, 'Gemini');
+  await _assertResponseOk(response, PROVIDERS.GEMINI.name);
 
   const data    = await response.json();
   const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
   if (!rawText) {
-    const reason = data?.candidates?.[0]?.finishReason;
-    if (reason === 'SAFETY') throw new Error('Response blocked by safety filter. Please rephrase your input.');
-    throw new Error('Received an empty response from Gemini.');
+    const finishReason = data?.candidates?.[0]?.finishReason;
+    if (finishReason === 'SAFETY') throw new SafetyBlockError();
+    throw new RecoverAIError('Received an empty response from Gemini.', 'EMPTY_RESPONSE');
   }
 
   return _parseJSON(rawText);
 }
 
-// ─────────────────────────────────────────────────────────────
-// GROQ IMPLEMENTATION  (OpenAI-compatible chat completions API)
-// ─────────────────────────────────────────────────────────────
 async function _callGroq(key, prompt) {
-  const body = {
-    model   : PROVIDERS.groq.model,
-    messages : [{ role: 'user', content: prompt }],
-    temperature    : 0.75,
-    max_tokens     : 1200,
-    response_format: { type: 'json_object' },  // enforce JSON output
+  const requestBody = {
+    model:           PROVIDERS.GROQ.model,
+    messages:        [{ role: 'user', content: prompt }],
+    temperature:     0.75,
+    max_tokens:      1200,
+    response_format: { type: 'json_object' },
   };
 
   let response;
   try {
-    response = await fetch(PROVIDERS.groq.endpoint, {
-      method : 'POST',
+    response = await fetch(PROVIDERS.GROQ.endpoint, {
+      method:  'POST',
       headers: {
-        'Content-Type' : 'application/json',
+        'Content-Type':  'application/json',
         'Authorization': `Bearer ${key}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(requestBody),
     });
   } catch (_) {
-    throw new Error('Network error — please check your internet connection.');
+    throw new ApiNetworkError();
   }
 
-  _assertOk(response, 'Groq');
+  await _assertResponseOk(response, PROVIDERS.GROQ.name);
 
   const data    = await response.json();
   const rawText = data?.choices?.[0]?.message?.content || '';
 
-  if (!rawText) throw new Error('Received an empty response from Groq.');
+  if (!rawText) throw new RecoverAIError('Received an empty response from Groq.', 'EMPTY_RESPONSE');
 
   return _parseJSON(rawText);
 }
 
 // ─────────────────────────────────────────────────────────────
-// SHARED UTILITIES
+// PRIVATE UTILITY FUNCTIONS
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Asserts response.ok and throws typed errors for known HTTP status codes.
- * Shared between Gemini and Groq error handling.
+ * Asserts HTTP response status and throws appropriate Domain Errors.
+ *
+ * @param {Response} response
+ * @param {string} providerName
  */
-async function _assertOk(response, providerName) {
+async function _assertResponseOk(response, providerName) {
   if (response.ok) return;
 
-  let apiMsg = '';
+  let apiErrorMessage = '';
   try {
-    const err = await response.json();
-    apiMsg = err?.error?.message || err?.message || '';
-  } catch (_) {}
-
-  if (response.status === 400) throw new Error(`Bad request — ${apiMsg || 'check your prompt format.'}`);
-  if (response.status === 401 || response.status === 403) throw new Error('API_KEY_INVALID');
-  if (response.status === 429) {
-    const retryAfter = parseInt(response.headers.get('Retry-After') || '30', 10);
-    throw new Error(`QUOTA_EXCEEDED:${retryAfter}`);
+    const errorJson = await response.json();
+    apiErrorMessage = errorJson?.error?.message || errorJson?.message || '';
+  } catch (_) {
+    // Unparseable body fallback
   }
-  if (response.status >= 500) throw new Error(`${providerName} service is temporarily unavailable. Try again in a moment.`);
-  throw new Error(apiMsg || `${providerName} API error (${response.status})`);
+
+  if (response.status === 400) {
+    throw new RecoverAIError(`Bad request — ${apiErrorMessage || 'check input format.'}`, 'BAD_REQUEST');
+  }
+  if (response.status === 401 || response.status === 403) {
+    throw new ApiKeyInvalidError(providerName);
+  }
+  if (response.status === 429) {
+    const retryAfter = parseInt(response.headers.get('Retry-After') || '60', 10);
+    throw new QuotaExceededError(retryAfter);
+  }
+  if (response.status >= 500) {
+    throw new RecoverAIError(`${providerName} service is temporarily unavailable. Try again in a moment.`, 'SERVER_ERROR');
+  }
+
+  throw new RecoverAIError(apiErrorMessage || `${providerName} API error (${response.status})`, 'API_ERROR');
 }
 
 /**
- * Strips markdown code fences and parses JSON.
- * Falls back to { _raw, _parseError } for graceful UI degradation.
+ * Strips markdown code fences and parses raw text into a JSON object.
+ * Returns a raw fallback object if parsing fails.
+ *
+ * @param {string} rawText
+ * @returns {Object}
  */
-function _parseJSON(text) {
-  const cleaned = text
+function _parseJSON(rawText) {
+  const cleaned = String(rawText ?? '')
     .replace(/^```json\s*/i, '')
     .replace(/^```\s*/i, '')
     .replace(/\s*```$/i, '')
@@ -213,6 +271,6 @@ function _parseJSON(text) {
   try {
     return JSON.parse(cleaned);
   } catch (_) {
-    return { _raw: text, _parseError: true };
+    return { _raw: rawText, _parseError: true };
   }
 }

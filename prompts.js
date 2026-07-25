@@ -1,18 +1,46 @@
 // =============================================================
-// RecoverAI — Prompt Templates
-// Each function returns a fully-formed Gemini prompt string.
+// RecoverAI — Domain Prompt Service & Templates
+// Clean Code Architecture | Immutability & Type Annotations
 // =============================================================
 
-const PROMPTS = {
+'use strict';
+
+/**
+ * @typedef {Object} SOSPromptInput
+ * @property {string} userDescription - Description of the user's current situation or craving.
+ */
+
+/**
+ * @typedef {Object} CheckinPromptInput
+ * @property {number} moodScore - Mood score scale from 1 (great) to 5 (crisis).
+ * @property {string} moodLabel - Human-readable mood description.
+ * @property {string} [context] - Optional free-text context from the user.
+ * @property {number} streakCount - Consecutive recovery days tracked.
+ */
+
+/**
+ * @typedef {Object} CaregiverPromptInput
+ * @property {string} situationDescription - Caregiver's description of their loved one's situation.
+ */
+
+/**
+ * Prompt Template Registry.
+ * Sealed to enforce object immutability and prevent runtime tampering.
+ */
+const PROMPTS = Object.freeze({
   /**
-   * SOS Craving Support prompt.
-   * @param {string} userInput - What the user described
+   * Generates prompt instructions for acute SOS craving support.
+   *
+   * @param {string} userDescription
+   * @returns {string} Fully formed prompt string requiring strict JSON response.
    */
-  sos(userInput) {
+  sos(userDescription) {
+    const sanitizedInput = String(userDescription ?? '').trim();
+
     return `You are a compassionate, trauma-informed recovery support specialist.
 A person in recovery from a substance use disorder is reaching out RIGHT NOW — treat this with urgency and warmth.
 
-Their situation: "${userInput}"
+Their situation: "${sanitizedInput}"
 
 Respond ONLY with a single valid JSON object. No markdown fences, no explanation outside the JSON.
 
@@ -36,18 +64,24 @@ Rules:
   },
 
   /**
-   * Daily Check-In prompt.
-   * @param {number} mood - 1 (great) to 5 (crisis)
-   * @param {string} moodLabel - Human-readable mood label
-   * @param {string} context - Optional user-written context
-   * @param {number} streak - Current day streak from localStorage
+   * Generates prompt instructions for daily recovery check-ins.
+   *
+   * @param {number} moodScore - 1 (Great) to 5 (Crisis)
+   * @param {string} moodLabel - Descriptive mood title
+   * @param {string} context - Optional user note
+   * @param {number} streakCount - Recovery streak in days
+   * @returns {string} Fully formed prompt string requiring strict JSON response.
    */
-  checkin(mood, moodLabel, context, streak) {
+  checkin(moodScore, moodLabel, context, streakCount) {
+    const sanitizedContext = String(context ?? '').trim() || 'No additional context provided';
+    const sanitizedLabel   = String(moodLabel ?? 'Neutral').trim();
+    const safeStreak       = Math.max(0, parseInt(streakCount, 10) || 0);
+
     return `You are a warm, encouraging recovery coach helping someone stay on track with their sobriety.
 
-Today's mood: "${moodLabel}" (on a scale where 1=feeling great, 5=in crisis — they selected ${mood}/5)
-Additional context from them: "${context || 'No additional context provided'}"
-Days they have been tracking their recovery: ${streak} day${streak !== 1 ? 's' : ''}
+Today's mood: "${sanitizedLabel}" (on a scale where 1=feeling great, 5=in crisis — they selected ${moodScore}/5)
+Additional context from them: "${sanitizedContext}"
+Days they have been tracking their recovery: ${safeStreak} day${safeStreak !== 1 ? 's' : ''}
 
 Respond ONLY with a single valid JSON object. No markdown fences, no explanation outside the JSON.
 
@@ -67,14 +101,18 @@ Be warm, specific, and empowering. Short streaks deserve celebration too. If moo
   },
 
   /**
-   * Caregiver Support prompt.
-   * @param {string} situation - What the caregiver described
+   * Generates prompt instructions for family and caregiver guidance.
+   *
+   * @param {string} situationDescription
+   * @returns {string} Fully formed prompt string requiring strict JSON response.
    */
-  caregiver(situation) {
+  caregiver(situationDescription) {
+    const sanitizedSituation = String(situationDescription ?? '').trim();
+
     return `You are a specialist counselor trained to support caregivers and family members of people with substance use disorders.
 A caregiver is reaching out for guidance. They are likely exhausted, scared, and doing their best.
 
-Situation they described: "${situation}"
+Situation they described: "${sanitizedSituation}"
 
 Respond ONLY with a single valid JSON object. No markdown fences, no explanation outside the JSON.
 
@@ -99,5 +137,5 @@ Respond ONLY with a single valid JSON object. No markdown fences, no explanation
 }
 
 Use compassionate, practical, direct language. Do not be preachy. Give them tools they can use immediately.`;
-  }
-};
+  },
+});
