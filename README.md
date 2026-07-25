@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # RecoverAI 💚
 ### AI-Powered Recovery & Prevention Platform for Substance Use Disorders
 
@@ -113,3 +114,7 @@ git push -u origin main
 ## ⚠️ Disclaimer
 
 RecoverAI is a supportive tool, not a replacement for professional medical or mental health treatment. Always consult licensed healthcare providers for substance use disorder treatment.
+=======
+# promptwars
+Created for promptwars
+>>>>>>> d7838b30e0c70cd3eb5cf153c0e37e2174825880
