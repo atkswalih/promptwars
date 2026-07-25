@@ -1,0 +1,27 @@
+# ==============================================================
+# RecoverAI — .gitignore
+# Prevents accidental exposure of secrets in version control.
+# ==============================================================
+
+# ── Environment / secrets ─────────────────────────────────────
+# If you ever move the API key to a .env file, keep it out of git.
+.env
+.env.local
+.env.*.local
+
+# ── OS junk ───────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Editor cruft ──────────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# ── Logs ──────────────────────────────────────────────────────
+*.log
+
+# ── Node (not used, but safe to have) ─────────────────────────
+node_modules/

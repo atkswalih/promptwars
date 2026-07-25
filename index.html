@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="RecoverAI — 24/7 AI-powered recovery support for people dealing with substance use disorders and their caregivers. Powered by Google Gemini." />
+  <meta name="theme-color" content="#080d18" />
+
+  <!-- Open Graph -->
+  <meta property="og:title"       content="RecoverAI — Your Recovery Companion" />
+  <meta property="og:description" content="Compassionate AI support for recovery from substance use disorder — available 24/7." />
+  <meta property="og:type"        content="website" />
+
+  <title>RecoverAI — Your Recovery Companion</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- Favicon (inline SVG — no extra file needed) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💚</text></svg>" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <!-- ── API Key Warning Banner ── -->
+  <div id="api-key-banner" class="api-key-banner hidden" role="alert">
+    ⚠️ No Gemini API key configured.
+    <button id="open-settings-btn" aria-label="Open API settings">Add your key →</button>
+  </div>
+
+  <!-- ── App Header ── -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="logo" aria-label="RecoverAI">
+        <div class="logo-icon" aria-hidden="true">💚</div>
+        <div class="logo-text">
+          <span class="logo-name">RecoverAI</span>
+          <span class="logo-tagline">You're not alone.</span>
+        </div>
+      </div>
+      <button id="settings-trigger" class="settings-btn" aria-label="API Settings" title="Settings">⚙️</button>
+    </div>
+  </header>
+
+  <!-- ── Tab Navigation ── -->
+  <nav class="tab-nav" role="tablist" aria-label="App sections">
+    <button class="tab-btn active" data-tab="sos"
+            role="tab" id="tab-sos" aria-selected="true" aria-controls="sos-tab">
+      <span class="tab-icon" aria-hidden="true">🆘</span>
+      <span class="tab-label">SOS</span>
+    </button>
+    <button class="tab-btn" data-tab="checkin"
+            role="tab" id="tab-checkin" aria-selected="false" aria-controls="checkin-tab">
+      <span class="tab-icon" aria-hidden="true">📋</span>
+      <span class="tab-label">Check-In</span>
+    </button>
+    <button class="tab-btn" data-tab="caregiver"
+            role="tab" id="tab-caregiver" aria-selected="false" aria-controls="caregiver-tab">
+      <span class="tab-icon" aria-hidden="true">🤝</span>
+      <span class="tab-label">Caregiver</span>
+    </button>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════
+       MAIN CONTENT
+       ═══════════════════════════════════════════ -->
+  <main class="app-main">
+
+    <!-- ══════════════════════════════════════
+         TAB 1 — SOS
+         ══════════════════════════════════════ -->
+    <section id="sos-tab" class="tab-panel active"
+             role="tabpanel" aria-labelledby="tab-sos">
+
+      <!-- Hero with pulsing button -->
+      <div class="sos-hero">
+        <button id="sos-pulse-btn" class="sos-pulse-button"
+                aria-label="I need help right now — click to focus the input">
+          <span class="sos-btn-inner" aria-hidden="true">SOS</span>
+        </button>
+        <p class="sos-hero-text">Feeling the urge? <strong>We're here right now.</strong></p>
+      </div>
+
+      <!-- Input Card -->
+      <div class="input-card">
+        <label for="sos-textarea" class="input-label">Tell us what's happening</label>
+        <textarea
+          id="sos-textarea"
+          class="main-textarea"
+          placeholder="Describe how you're feeling, what's triggering you, where you are… This is a safe, private space."
+          rows="4"
+          aria-describedby="sos-hint"
+        ></textarea>
+
+        <!-- Image upload for environment analysis -->
+        <div class="upload-area" role="group" aria-label="Optional photo upload">
+          <input type="file" id="sos-image-upload" accept="image/*" class="hidden"
+                 aria-label="Upload a photo of your environment" />
+          <button type="button" id="sos-upload-btn" class="upload-btn">
+            <span aria-hidden="true">📷</span> Add photo of your environment
+          </button>
+          <p id="sos-hint" style="font-size:0.75rem;color:var(--text-dim);margin-top:-6px;">
+            Optional — Gemini Vision will analyze triggers in the image
+          </p>
+          <div id="sos-image-preview" class="image-preview hidden">
+            <img id="sos-preview-img" src="" alt="Uploaded environment photo" />
+            <button id="sos-remove-img" class="remove-img-btn" aria-label="Remove image">✕</button>
+          </div>
+        </div>
+
+        <button id="sos-submit" class="submit-btn sos-submit">
+          <span class="btn-text">Get Support Now</span>
+          <span class="btn-loader hidden" aria-live="polite">
+            <span class="spinner" aria-hidden="true"></span> Analyzing with Gemini…
+          </span>
+        </button>
+      </div>
+
+      <!-- Gemini Response -->
+      <div id="sos-response" class="response-container hidden" aria-live="polite" aria-atomic="false"></div>
+
+      <!-- Crisis Resources -->
+      <div class="crisis-bar" role="complementary" aria-label="Crisis resources">
+        <span class="crisis-label">Crisis:</span>
+        <a href="tel:988" class="crisis-link" aria-label="988 Suicide and Crisis Lifeline">988 Lifeline</a>
+        <a href="tel:18006624357" class="crisis-link" aria-label="SAMHSA National Helpline">SAMHSA</a>
+        <a href="sms:741741?body=HOME" class="crisis-link" aria-label="Text HOME to Crisis Text Line 741741">Text HOME→741741</a>
+      </div>
+
+    </section>
+
+    <!-- ══════════════════════════════════════
+         TAB 2 — DAILY CHECK-IN
+         ══════════════════════════════════════ -->
+    <section id="checkin-tab" class="tab-panel"
+             role="tabpanel" aria-labelledby="tab-checkin">
+
+      <!-- Header with Streak -->
+      <div class="checkin-header">
+        <div class="streak-badge" aria-label="Recovery streak">
+          <span class="streak-flame" aria-hidden="true">🔥</span>
+          <span id="streak-count" class="streak-number" aria-live="polite">0</span>
+          <span class="streak-label">day streak</span>
+        </div>
+        <h1 class="checkin-title">How are you today?</h1>
+        <p class="checkin-subtitle">A daily check-in keeps recovery on track.</p>
+      </div>
+
+      <!-- Input Card -->
+      <div class="input-card">
+        <!-- Mood Selector -->
+        <div class="mood-grid" role="group" aria-label="Select your mood today">
+          <button class="mood-btn" data-mood="1" data-label="Feeling great today"
+                  aria-label="Feeling great" type="button">
+            <span class="mood-emoji" aria-hidden="true">😊</span>
+            <span class="mood-text">Great</span>
+          </button>
+          <button class="mood-btn" data-mood="2" data-label="Feeling okay today"
+                  aria-label="Feeling okay" type="button">
+            <span class="mood-emoji" aria-hidden="true">🙂</span>
+            <span class="mood-text">Okay</span>
+          </button>
+          <button class="mood-btn" data-mood="3" data-label="Feeling neutral today"
+                  aria-label="Feeling neutral" type="button">
+            <span class="mood-emoji" aria-hidden="true">😐</span>
+            <span class="mood-text">Neutral</span>
+          </button>
+          <button class="mood-btn" data-mood="4" data-label="Struggling or anxious today"
+                  aria-label="Feeling anxious or struggling" type="button">
+            <span class="mood-emoji" aria-hidden="true">😟</span>
+            <span class="mood-text">Struggling</span>
+          </button>
+          <button class="mood-btn" data-mood="5" data-label="In crisis or very distressed today"
+                  aria-label="In crisis" type="button">
+            <span class="mood-emoji" aria-hidden="true">😰</span>
+            <span class="mood-text">Crisis</span>
+          </button>
+        </div>
+
+        <textarea
+          id="checkin-textarea"
+          class="main-textarea"
+          placeholder="What's on your mind? Any wins, challenges, or worries today? (optional)"
+          rows="3"
+          aria-label="Additional context about your day"
+        ></textarea>
+
+        <button id="checkin-submit" class="submit-btn checkin-submit">
+          <span class="btn-text">Get My Daily Plan</span>
+          <span class="btn-loader hidden" aria-live="polite">
+            <span class="spinner" aria-hidden="true"></span> Creating your plan…
+          </span>
+        </button>
+      </div>
+
+      <!-- Gemini Response -->
+      <div id="checkin-response" class="response-container hidden" aria-live="polite" aria-atomic="false"></div>
+
+    </section>
+
+    <!-- ══════════════════════════════════════
+         TAB 3 — CAREGIVER
+         ══════════════════════════════════════ -->
+    <section id="caregiver-tab" class="tab-panel"
+             role="tabpanel" aria-labelledby="tab-caregiver">
+
+      <!-- Header -->
+      <div class="caregiver-header">
+        <div class="caregiver-badge" aria-hidden="true">🤝 Caregiver Support</div>
+        <h1 class="caregiver-title">You're doing something brave.</h1>
+        <p class="caregiver-subtitle">
+          Supporting a loved one through recovery is hard and exhausting.
+          Let AI help you find the right words and actions.
+        </p>
+      </div>
+
+      <!-- Input Card -->
+      <div class="input-card">
+        <label for="caregiver-textarea" class="input-label">Describe what's happening</label>
+        <textarea
+          id="caregiver-textarea"
+          class="main-textarea"
+          placeholder="Tell us about the situation — what happened, how they're behaving, what you're worried about, what you've already tried…"
+          rows="5"
+          aria-describedby="caregiver-hint"
+        ></textarea>
+        <p id="caregiver-hint" style="font-size:0.75rem;color:var(--text-dim);margin-top:-6px;">
+          The more detail you share, the more specific and helpful the guidance will be.
+        </p>
+
+        <button id="caregiver-submit" class="submit-btn caregiver-submit">
+          <span class="btn-text">Get Guidance</span>
+          <span class="btn-loader hidden" aria-live="polite">
+            <span class="spinner" aria-hidden="true"></span> Analyzing situation…
+          </span>
+        </button>
+      </div>
+
+      <!-- Gemini Response -->
+      <div id="caregiver-response" class="response-container hidden" aria-live="polite" aria-atomic="false"></div>
+
+      <!-- Crisis Resources for Caregiver -->
+      <div class="crisis-bar caregiver-crisis" role="complementary" aria-label="Emergency contacts">
+        <span class="crisis-label">Emergency:</span>
+        <a href="tel:911"          class="crisis-link" aria-label="911 emergency">911</a>
+        <a href="tel:988"          class="crisis-link" aria-label="988 Crisis Line">988 Crisis</a>
+        <a href="tel:18006624357" class="crisis-link" aria-label="SAMHSA Helpline">SAMHSA</a>
+      </div>
+
+    </section>
+
+  </main><!-- /app-main -->
+
+
+  <!-- ═══════════════════════════════════════════
+       SETTINGS MODAL (bottom sheet)
+       ═══════════════════════════════════════════ -->
+  <div id="settings-modal" class="modal-overlay hidden"
+       role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 class="modal-title" id="settings-title">⚙️ API Settings</h2>
+        <button id="settings-close" class="modal-close" aria-label="Close settings">✕</button>
+      </div>
+      <div class="modal-body">
+        <label for="api-key-input" class="input-label">Gemini API Key</label>
+        <input
+          type="password"
+          id="api-key-input"
+          class="api-key-input"
+          placeholder="AIza…"
+          autocomplete="off"
+          spellcheck="false"
+          aria-describedby="key-hint"
+        />
+        <p class="modal-hint" id="key-hint">
+          Your key is stored in <code>localStorage</code> only — never sent to our servers.
+          Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio</a>.
+        </p>
+        <button id="api-key-save" class="submit-btn" aria-label="Save API key">Save Key</button>
+        <button id="api-key-clear" class="clear-btn" aria-label="Clear saved API key">Clear Saved Key</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Scripts ── -->
+  <script src="prompts.js"></script>
+  <script src="gemini.js"></script>
+  <script src="app.js"></script>
+
+</body>
+</html>
