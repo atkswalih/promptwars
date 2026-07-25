@@ -28,10 +28,12 @@ const PROVIDERS = {
  * @returns {string} trimmed key or empty string
  */
 function getApiKey() {
-  // localStorage key takes priority (set via ⚙️ Settings modal)
-  // DEMO_KEY is the fallback for judges — rotate this key after judging
   const DEMO_KEY = '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';
-  return (localStorage.getItem('recoverai_key') || DEMO_KEY).trim();
+  let saved = '';
+  try {
+    saved = localStorage.getItem('recoverai_key') || '';
+  } catch (_) {}
+  return (saved || DEMO_KEY).trim();
 }
 
 
