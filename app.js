@@ -37,29 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initSOS();
   initCheckin();
   initCaregiver();
-  initSettings();
-  checkApiKeyBanner();
 });
 
-/* ═══════════════════════════════════════════════════════════
-   API KEY BANNER
-   ═══════════════════════════════════════════════════════════ */
-function checkApiKeyBanner() {
-  // Key lives exclusively in localStorage — no hardcoded fallback
-  const key = (localStorage.getItem('recoverai_key') || '').trim();
-  const banner = $('api-key-banner');
-
-  if (!key || key.length < 20) {
-    banner.classList.remove('hidden');
-    // Clone node to safely remove any previously attached click listeners
-    const btn = $('open-settings-btn');
-    const fresh = btn.cloneNode(true);
-    btn.replaceWith(fresh);
-    $('open-settings-btn').addEventListener('click', openSettingsModal);
-  } else {
-    banner.classList.add('hidden');
-  }
-}
 
 /* ═══════════════════════════════════════════════════════════
    TABS
@@ -128,55 +107,11 @@ function initSOS() {
     $('sos-textarea').scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
 
-  /* Image upload trigger */
-  $('sos-upload-btn').addEventListener('click', () => {
-    $('sos-image-upload').click();
-  });
-
-  /* File selected → read as base64 */
-  $('sos-image-upload').addEventListener('change', handleSOSImageSelect);
-
-  /* Remove image */
-  $('sos-remove-img').addEventListener('click', clearSOSImage);
-
-  /* Drag-and-drop on upload area */
-  const uploadArea = $('sos-upload-btn').parentElement;
-  uploadArea.addEventListener('dragover', e => { e.preventDefault(); });
-  uploadArea.addEventListener('drop', e => {
-    e.preventDefault();
-    const file = e.dataTransfer?.files?.[0];
-    if (file && file.type.startsWith('image/')) processSOSImageFile(file);
-  });
-
   /* Submit */
   $('sos-submit').addEventListener('click', handleSOSSubmit);
 }
 
-function handleSOSImageSelect(e) {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  processSOSImageFile(file);
-}
 
-function processSOSImageFile(file) {
-  state.sosImageMimeType = file.type || 'image/jpeg';
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const dataUrl = ev.target.result;
-    state.sosImageBase64 = dataUrl.split(',')[1]; // strip data URL header
-    $('sos-preview-img').src = dataUrl;
-    $('sos-image-preview').classList.remove('hidden');
-    $('sos-upload-btn').textContent = '✏️ Change photo';
-  };
-  reader.readAsDataURL(file);
-}
-
-function clearSOSImage() {
-  state.sosImageBase64 = null;
-  $('sos-image-upload').value = '';
-  $('sos-image-preview').classList.add('hidden');
-  $('sos-upload-btn').innerHTML = '<span>📷</span> Add photo of your environment';
-}
 
 async function handleSOSSubmit() {
   const input = $('sos-textarea').value.trim();
@@ -190,8 +125,8 @@ async function handleSOSSubmit() {
   responseEl.classList.add('hidden');
 
   try {
-    const prompt = PROMPTS.sos(input, !!state.sosImageBase64);
-    const data   = await callGemini(prompt, state.sosImageBase64, state.sosImageMimeType);
+    const prompt = PROMPTS.sos(input);
+    const data   = await callGemini(prompt);
     responseEl.innerHTML = renderSOSResponse(data);
     responseEl.classList.remove('hidden');
     scrollIntoView(responseEl);
@@ -302,58 +237,6 @@ async function handleCaregiverSubmit() {
   }
 }
 
-/* ═══════════════════════════════════════════════════════════
-   SETTINGS MODAL
-   ═══════════════════════════════════════════════════════════ */
-function initSettings() {
-  $('settings-trigger').addEventListener('click', openSettingsModal);
-  $('settings-close').addEventListener('click', closeSettingsModal);
-
-  /* Close on backdrop click */
-  $('settings-modal').addEventListener('click', e => {
-    if (e.target === $('settings-modal')) closeSettingsModal();
-  });
-
-  /* Save key */
-  $('api-key-save').addEventListener('click', () => {
-    const key = $('api-key-input').value.trim();
-    if (!key) return;
-    localStorage.setItem('recoverai_key', key);
-    closeSettingsModal();
-    checkApiKeyBanner();
-  });
-
-  /* Clear key */
-  $('api-key-clear').addEventListener('click', () => {
-    localStorage.removeItem('recoverai_key');
-    $('api-key-input').value = '';
-    checkApiKeyBanner();
-  });
-
-  /* Keyboard: Escape closes modal */
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeSettingsModal();
-  });
-}
-
-function openSettingsModal() {
-  const saved = localStorage.getItem('recoverai_key') || '';
-  $('api-key-input').value = saved;
-
-  // Show which provider is currently active
-  const label    = (typeof getProviderLabel === 'function') ? getProviderLabel() : null;
-  const titleEl  = $('settings-title');
-  titleEl.textContent = label
-    ? `⚙️ Settings  —  Active: ${label}`
-    : '⚙️ API Settings';
-
-  $('settings-modal').classList.remove('hidden');
-  setTimeout(() => $('api-key-input').focus(), 350);
-}
-
-function closeSettingsModal() {
-  $('settings-modal').classList.add('hidden');
-}
 
 /* ═══════════════════════════════════════════════════════════
    RATE-LIMIT COOLDOWN ENGINE

@@ -7,16 +7,12 @@ const PROMPTS = {
   /**
    * SOS Craving Support prompt.
    * @param {string} userInput - What the user described
-   * @param {boolean} hasImage - Whether an environment photo was uploaded
    */
-  sos(userInput, hasImage) {
+  sos(userInput) {
     return `You are a compassionate, trauma-informed recovery support specialist.
 A person in recovery from a substance use disorder is reaching out RIGHT NOW — treat this with urgency and warmth.
 
 Their situation: "${userInput}"
-${hasImage
-  ? '\nThey have also shared a photo of their current environment. Carefully analyze any visible triggers, social pressures, substances, or environmental stressors that could impact their recovery, and reference what you see.'
-  : ''}
 
 Respond ONLY with a single valid JSON object. No markdown fences, no explanation outside the JSON.
 

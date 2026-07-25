@@ -27,11 +27,6 @@
 
 <body>
 
-  <!-- ── API Key Warning Banner ── -->
-  <div id="api-key-banner" class="api-key-banner hidden" role="alert">
-    ⚠️ No Gemini API key configured.
-    <button id="open-settings-btn" aria-label="Open API settings">Add your key →</button>
-  </div>
 
   <!-- ── App Header ── -->
   <header class="app-header">
@@ -43,7 +38,6 @@
           <span class="logo-tagline">You're not alone.</span>
         </div>
       </div>
-      <button id="settings-trigger" class="settings-btn" aria-label="API Settings" title="Settings">⚙️</button>
     </div>
   </header>
 
@@ -97,21 +91,7 @@
           aria-describedby="sos-hint"
         ></textarea>
 
-        <!-- Image upload for environment analysis -->
-        <div class="upload-area" role="group" aria-label="Optional photo upload">
-          <input type="file" id="sos-image-upload" accept="image/*" class="hidden"
-                 aria-label="Upload a photo of your environment" />
-          <button type="button" id="sos-upload-btn" class="upload-btn">
-            <span aria-hidden="true">📷</span> Add photo of your environment
-          </button>
-          <p id="sos-hint" style="font-size:0.75rem;color:var(--text-dim);margin-top:-6px;">
-            Optional — Gemini Vision will analyze triggers in the image
-          </p>
-          <div id="sos-image-preview" class="image-preview hidden">
-            <img id="sos-preview-img" src="" alt="Uploaded environment photo" />
-            <button id="sos-remove-img" class="remove-img-btn" aria-label="Remove image">✕</button>
-          </div>
-        </div>
+
 
         <button id="sos-submit" class="submit-btn sos-submit">
           <span class="btn-text">Get Support Now</span>
@@ -257,40 +237,7 @@
   </main><!-- /app-main -->
 
 
-  <!-- ═══════════════════════════════════════════
-       SETTINGS MODAL (bottom sheet)
-       ═══════════════════════════════════════════ -->
-  <div id="settings-modal" class="modal-overlay hidden"
-       role="dialog" aria-modal="true" aria-labelledby="settings-title">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h2 class="modal-title" id="settings-title">⚙️ API Settings</h2>
-        <button id="settings-close" class="modal-close" aria-label="Close settings">✕</button>
-      </div>
-      <div class="modal-body">
-        <label for="api-key-input" class="input-label">Gemini API Key</label>
-        <input
-          type="password"
-          id="api-key-input"
-          class="api-key-input"
-          placeholder="AIza…"
-          autocomplete="off"
-          spellcheck="false"
-          aria-describedby="key-hint"
-        />
-        <p class="modal-hint" id="key-hint">
-          Paste a <strong>Gemini</strong> key (<code>AIzaSy…</code>) from
-          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio</a>
-          &nbsp;— or a <strong>Groq</strong> key (<code>gsk_…</code>) from
-          <a href="https://console.groq.com" target="_blank" rel="noopener">console.groq.com</a>.
-          The app auto-detects which provider to use. Keys are stored in
-          <code>localStorage</code> only.
-        </p>
-        <button id="api-key-save" class="submit-btn" aria-label="Save API key">Save Key</button>
-        <button id="api-key-clear" class="clear-btn" aria-label="Clear saved API key">Clear Saved Key</button>
-      </div>
-    </div>
-  </div>
+
 
   <!-- ── Scripts ── -->
   <script src="prompts.js"></script>
