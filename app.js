@@ -339,6 +339,14 @@ function initSettings() {
 function openSettingsModal() {
   const saved = localStorage.getItem('recoverai_key') || '';
   $('api-key-input').value = saved;
+
+  // Show which provider is currently active
+  const label    = (typeof getProviderLabel === 'function') ? getProviderLabel() : null;
+  const titleEl  = $('settings-title');
+  titleEl.textContent = label
+    ? `⚙️ Settings  —  Active: ${label}`
+    : '⚙️ API Settings';
+
   $('settings-modal').classList.remove('hidden');
   setTimeout(() => $('api-key-input').focus(), 350);
 }
@@ -697,12 +705,20 @@ function renderError(message) {
     API_KEY_INVALID: {
       icon:  '🔐',
       title: 'Invalid API Key (401 / 403)',
-      body:  `Gemini rejected your key. Open <button onclick="openSettingsModal()"
+      body:  `Gemini or Groq rejected your key. Open <button onclick="openSettingsModal()"
               style="color:var(--checkin);text-decoration:underline;font-size:inherit;cursor:pointer;">
-              ⚙️&nbsp;Settings</button> and paste a valid key that starts with <code>AIzaSy…</code>.
-              Generate one at
-              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener"
-                 style="color:var(--checkin);text-decoration:underline;">Google AI Studio</a>.`,
+              ⚙️&nbsp;Settings</button> and paste a valid key.
+              <br>• Gemini keys start with <code>AIzaSy…</code> — get one at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="color:var(--checkin);text-decoration:underline;">Google AI Studio</a>.
+              <br>• Groq keys start with <code>gsk_…</code> — get one at <a href="https://console.groq.com" target="_blank" rel="noopener" style="color:var(--checkin);text-decoration:underline;">console.groq.com</a>.`,
+    },
+    API_KEY_UNKNOWN_FORMAT: {
+      icon:  '❓',
+      title: 'Unrecognised Key Format',
+      body:  `The key you entered isn\'t recognised as Gemini or Groq.
+              <br>• Gemini keys start with <code>AIzaSy…</code>
+              <br>• Groq keys start with <code>gsk_…</code>
+              <br>Open <button onclick="openSettingsModal()"
+              style="color:var(--checkin);text-decoration:underline;font-size:inherit;cursor:pointer;">⚙️&nbsp;Settings</button> and re-paste your key.`,
     },
     QUOTA_EXCEEDED: {
       icon:  '⏳',

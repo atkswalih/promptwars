@@ -279,8 +279,12 @@
           aria-describedby="key-hint"
         />
         <p class="modal-hint" id="key-hint">
-          Your key is stored in <code>localStorage</code> only — never sent to our servers.
-          Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio</a>.
+          Paste a <strong>Gemini</strong> key (<code>AIzaSy…</code>) from
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio</a>
+          &nbsp;— or a <strong>Groq</strong> key (<code>gsk_…</code>) from
+          <a href="https://console.groq.com" target="_blank" rel="noopener">console.groq.com</a>.
+          The app auto-detects which provider to use. Keys are stored in
+          <code>localStorage</code> only.
         </p>
         <button id="api-key-save" class="submit-btn" aria-label="Save API key">Save Key</button>
         <button id="api-key-clear" class="clear-btn" aria-label="Clear saved API key">Clear Saved Key</button>
