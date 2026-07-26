@@ -13,65 +13,6 @@ if (typeof require !== 'undefined' && typeof global !== 'undefined') {
 }
 
 // ─────────────────────────────────────────────────────────────
-// DOMAIN ERROR HIERARCHY
-// ─────────────────────────────────────────────────────────────
-
-class RecoverAIError extends Error {
-  /**
-   * @param {string} message
-   * @param {string} code
-   */
-  constructor(message, code = 'RECOVER_AI_ERROR') {
-    super(message);
-    this.name = this.constructor.name;
-    this.code = code;
-  }
-}
-
-class ApiKeyMissingError extends RecoverAIError {
-  constructor() {
-    super('API key is missing or incomplete.', 'API_KEY_MISSING');
-  }
-}
-
-class ApiKeyInvalidError extends RecoverAIError {
-  /**
-   * @param {string} providerName
-   */
-  constructor(providerName = 'API Provider') {
-    super(`${providerName} rejected the provided API key (401/403).`, 'API_KEY_INVALID');
-  }
-}
-
-class QuotaExceededError extends RecoverAIError {
-  /**
-   * @param {number} [retryAfterSeconds=60]
-   */
-  constructor(retryAfterSeconds = 60) {
-    super(`Rate limit reached (429). Retry in ${retryAfterSeconds}s`, `QUOTA_EXCEEDED:${retryAfterSeconds}`);
-    this.retryAfterSeconds = retryAfterSeconds;
-  }
-}
-
-class ApiTimeoutError extends RecoverAIError {
-  constructor(timeoutMs = 15000) {
-    super(`Request timed out after ${timeoutMs / 1000}s. Please check your network connection.`, 'API_TIMEOUT');
-  }
-}
-
-class ApiNetworkError extends RecoverAIError {
-  constructor(message = 'Network error — please check your internet connection.') {
-    super(message, 'NETWORK_ERROR');
-  }
-}
-
-class SafetyBlockError extends RecoverAIError {
-  constructor() {
-    super('Response blocked by safety filter. Please rephrase your input.', 'SAFETY_BLOCK');
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
 // PROVIDER CONFIGURATION REGISTRY (IMMUTABLE)
 // ─────────────────────────────────────────────────────────────
 
@@ -300,5 +241,14 @@ function _parseJSON(rawText) {
 
 // Export for Node.js test environment if present
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { _parseJSON, detectProvider, getApiKey, callGemini };
+  module.exports = { _parseJSON, detectProvider, getApiKey, callGemini, getProviderLabel };
+}
+
+// Explicitly expose to browser global scope (defensive — ensures availability
+// even if strict-mode, CSP, or bundler quirks shadow top-level declarations)
+if (typeof window !== 'undefined') {
+  window.callGemini      = callGemini;
+  window.getApiKey        = getApiKey;
+  window.detectProvider   = detectProvider;
+  window.getProviderLabel = getProviderLabel;
 }

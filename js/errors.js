@@ -69,6 +69,20 @@ class ApiNetworkError extends RecoverAIError {
 }
 
 /**
+ * Thrown when an API request exceeds the configured timeout.
+ * @extends RecoverAIError
+ */
+class ApiTimeoutError extends RecoverAIError {
+  /**
+   * @param {number} [timeoutMs=15000] - Timeout duration in milliseconds.
+   */
+  constructor(timeoutMs = 15000) {
+    super(`Request timed out after ${Math.round(timeoutMs / 1000)}s. Please try again.`, 'API_TIMEOUT');
+    this.timeoutMs = timeoutMs;
+  }
+}
+
+/**
  * Thrown when an AI response is blocked by safety filters.
  * @extends RecoverAIError
  */
@@ -101,6 +115,7 @@ if (typeof module !== 'undefined' && module.exports) {
     ApiKeyInvalidError,
     QuotaExceededError,
     ApiNetworkError,
+    ApiTimeoutError,
     SafetyBlockError,
     ValidationError,
   };

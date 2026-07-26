@@ -43,7 +43,15 @@ const DOM = {
    * @param {function(Event, HTMLElement): void} handler - Callback.
    */
   delegate(container, eventName, targetSelector, handler) {
-    const el = typeof container === 'string' ? this.get(container) : container;
+    let el;
+    if (typeof container === 'string') {
+      // Support both raw IDs and CSS selectors (e.g. '.mood-grid', '#my-id')
+      el = container.startsWith('.') || container.startsWith('#')
+        ? document.querySelector(container)
+        : this.get(container);
+    } else {
+      el = container;
+    }
     if (!el) return;
 
     el.addEventListener(eventName, (e) => {
